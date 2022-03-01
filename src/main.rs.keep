@@ -1,0 +1,23 @@
+use std::fs;
+use scraper::Html;
+use scraper::Selector;
+
+
+fn main() {
+
+let fil = "/home/lars/development/reference-data-api/fips_state_name.html";
+let src = fs::read_to_string(fil).expect("Unable to read file");
+//println!("{}", src);
+
+let document = Html::parse_document(&src);
+
+let selector = &Selector::parse("td")
+    .expect("Error during the parsing of table");
+
+let stateName = document
+    .select(selector)
+    .flat_map(|el| el.text())
+    .collect();
+
+println!("{}", "hello");   
+} 
