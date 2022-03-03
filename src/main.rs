@@ -1,29 +1,33 @@
+use soup::prelude::*;
 use std::fs;
-use scraper::Html;
-use scraper::Selector;
-use std::collections::HashMap;
 
-
-
-fn main() {
-
+fn main() -> Result<(), ureq::Error> {
     let url = "https://www.nrcs.usda.gov/wps/portal/nrcs/detail/?cid=nrcs143_013696";
 
-let mut page = reqwest::blocking::get(url).unwrap()
-            .text().unwrap();
+    let html: String = ureq::get(url).call()?.into_string()?;
 
-page.retain(|c| !c.is_whitespace());    
+    let soup = Soup::new(&html);
 
-let document = Html::parse_document(&page);
+    let div = soup
+        .tag("div") // result must be a div
+        .attr("id", "detail") // with id "foo"
+        .find()
+        .expect("Couldn't find tag");
 
-let selector = &Selector::parse("#detail td")
-    .expect("Error during the parsing of table");
+    let data = div
+        .tag("tr")
+        .find_all()
+        .skip(1)
+        .map(|tr| {
+            tr.tag("td")
+                .find_all()
+                .map(|td| td.text().replace('\n', "").replace('\t', ""))
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .collect::<Vec<_>>().join("\n");
 
-let stateName:Vec<_> = document
-    .select(selector)
-    .flat_map(|el| el.text())
-    .collect();
-
-println!("{:?}",stateName);   
-} 
-
+    //println!("{:?}", tr);
+    fs::write("states.csv", data).expect("Unable to write file");
+    Ok(())
+}
